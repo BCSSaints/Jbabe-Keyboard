@@ -7,51 +7,51 @@ import { SynthSettings } from './types';
 import { Visualizer } from './components/Visualizer';
 
 const PRESETS: Record<string, Partial<SynthSettings>> = {
-  'Piano': { 
+  'Carrying the Banner': { 
     oscType: 'triangle', 
     attack: 0.002, 
     decay: 1.8, 
     sustain: 0.01, 
     release: 0.35, 
-    cutoff: 2800, 
+    cutoff: 3500, 
     resonance: 0.5, 
+    reverb: 0.5 
+  },
+  'King of New York': { 
+    oscType: 'sawtooth', 
+    attack: 0.08, 
+    decay: 0.3, 
+    sustain: 0.6, 
+    release: 0.8, 
+    cutoff: 2500, 
+    resonance: 6, 
     reverb: 0.4 
   },
-  'Synth': { 
-    oscType: 'sawtooth', 
-    attack: 0.05, 
-    decay: 0.2, 
-    sustain: 0.4, 
-    release: 0.8, 
-    cutoff: 2000, 
-    resonance: 4, 
-    reverb: 0.3 
-  },
-  'Space': { 
+  'Santa Fe': { 
     oscType: 'sine', 
-    attack: 0.8, 
-    decay: 1.5, 
-    sustain: 0.6, 
-    release: 2.0, 
-    cutoff: 1200, 
+    attack: 1.2, 
+    decay: 2.0, 
+    sustain: 0.7, 
+    release: 2.5, 
+    cutoff: 1500, 
     resonance: 1, 
-    reverb: 0.8 
+    reverb: 0.9 
   },
-  'Bass': { 
+  'Strike!': { 
     oscType: 'square', 
     attack: 0.01, 
-    decay: 0.4, 
+    decay: 0.5, 
     sustain: 0, 
     release: 0.1, 
-    cutoff: 600, 
-    resonance: 8, 
-    reverb: 0.1 
+    cutoff: 500, 
+    resonance: 10, 
+    reverb: 0.2 
   }
 };
 
 const App: React.FC = () => {
   const [activeNotes, setActiveNotes] = useState<Set<number>>(new Set());
-  const [currentTone, setCurrentTone] = useState('Piano');
+  const [currentTone, setCurrentTone] = useState('Carrying the Banner');
 
   const setTone = (name: string) => {
     setCurrentTone(name);
@@ -102,38 +102,46 @@ const App: React.FC = () => {
   }, [handleNoteOn, handleNoteOff]);
 
   return (
-    <div className="h-screen bg-[#050505] text-white flex flex-col font-sans select-none overflow-hidden">
-      {/* Centered Header */}
-      <header className="py-8 flex flex-col items-center gap-4">
-        <h1 className="text-5xl font-black tracking-tighter text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-          Jbabe keyboard
+    <div className="h-screen bg-[#1c1917] text-[#d4c5b3] flex flex-col font-serif select-none overflow-hidden relative">
+      {/* Newspaper Header */}
+      <header className="pt-10 pb-6 flex flex-col items-center border-b-4 border-double border-[#4a3f35] mx-8">
+        <div className="w-full flex justify-between items-end mb-2 px-4 uppercase text-[10px] tracking-[0.4em] font-bold text-[#8b735b]">
+          <span>Vol. LXIX — No. 1899</span>
+          <span>New York City</span>
+          <span>Two Cents</span>
+        </div>
+        <h1 className="newspaper-title text-6xl sm:text-7xl font-black tracking-tight text-white mb-2 italic">
+          The Jbabe Gazette
         </h1>
-        <div className="flex gap-4 mt-2 flex-wrap justify-center px-4">
-          {Object.keys(PRESETS).map(name => (
-            <button
-              key={name}
-              onClick={() => setTone(name)}
-              className={`px-8 py-2 rounded-full text-sm font-bold transition-all duration-200 border-2 ${
-                currentTone === name
-                  ? 'bg-blue-600 border-blue-400 scale-105 shadow-lg'
-                  : 'bg-neutral-900 border-neutral-800 hover:border-neutral-600 opacity-60 hover:opacity-100'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
+        <div className="w-full border-t border-[#4a3f35] pt-2 flex flex-col items-center gap-4">
+          <p className="typewriter text-xs uppercase tracking-widest text-[#8b735b]">EXTRA! EXTRA! Choose your melody!</p>
+          <div className="flex gap-2 sm:gap-4 flex-wrap justify-center px-4">
+            {Object.keys(PRESETS).map(name => (
+              <button
+                key={name}
+                onClick={() => setTone(name)}
+                className={`px-6 py-2 rounded-sm text-xs font-bold transition-all duration-200 border border-[#4a3f35] uppercase tracking-tighter ${
+                  currentTone === name
+                    ? 'bg-[#d4c5b3] text-[#1c1917] scale-105 shadow-[4px_4px_0px_#4a3f35]'
+                    : 'bg-transparent text-[#d4c5b3] hover:bg-[#2a241e] opacity-70 hover:opacity-100'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Keyboard Area */}
       <main className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8">
-        <div className="w-full max-w-[1400px] bg-neutral-900/40 rounded-3xl border border-white/5 shadow-2xl overflow-hidden flex flex-col">
-          {/* Audio Visualizer Display */}
+        <div className="w-full max-w-[1400px] bg-[#2a241e] rounded-lg border-4 border-[#4a3f35] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
+          {/* Audio Visualizer styled like an ink-graph */}
           <Visualizer />
           
-          <div className="p-4 sm:p-8">
+          <div className="p-4 sm:p-8 bg-[#221c18]">
             <div className="flex overflow-x-auto overflow-y-hidden pb-12 scroll-smooth no-scrollbar">
-              <div className="flex min-w-max h-[300px] sm:h-[350px] items-start mx-auto">
+              <div className="flex min-w-max h-[280px] sm:h-[340px] items-start mx-auto bg-[#1a1512] p-2 rounded-lg shadow-inner">
                 {PIANO_KEYS_61.map((note) => (
                   <PianoKey
                     key={note.midi}
@@ -146,21 +154,21 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <div className="mt-4 flex justify-center items-center gap-8 text-neutral-500 font-mono text-[10px] uppercase tracking-widest">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${activeNotes.size > 0 ? 'bg-blue-500 animate-ping' : 'bg-neutral-800'}`}></span>
-                {activeNotes.size > 0 ? 'Playing' : 'Ready'}
+            <div className="mt-6 flex justify-between items-center px-4 text-[#8b735b] font-serif text-[11px] uppercase tracking-[0.2em] italic border-t border-[#3d3128] pt-4">
+              <div className="flex items-center gap-3">
+                <span className={`w-3 h-3 border border-[#8b735b] rotate-45 ${activeNotes.size > 0 ? 'bg-[#d4c5b3]' : 'bg-transparent'}`}></span>
+                {activeNotes.size > 0 ? 'Resonance in Motion' : 'Waiting for the News'}
               </div>
-              <span className="hidden sm:inline">Desktop Keys: A, W, S, E, D, F...</span>
-              <span className="hidden sm:inline">Active: {activeNotes.size}</span>
+              <span className="hidden sm:inline">Desktop Typing: A to L Rows</span>
+              <span className="hidden sm:inline">Active Voices: {activeNotes.size}</span>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Minimal Footer */}
-      <footer className="p-4 text-center text-[9px] text-neutral-700 font-bold uppercase tracking-[0.3em]">
-        Designed for Jbabe &bull; High Fidelity Web Audio
+      {/* Vintage Footer */}
+      <footer className="p-6 text-center text-[10px] text-[#5c4d3f] font-bold uppercase tracking-[0.4em] border-t border-[#2a241e]">
+        Pulitzer & Hearst Approved &bull; Est. 1899
       </footer>
 
       <style>{`

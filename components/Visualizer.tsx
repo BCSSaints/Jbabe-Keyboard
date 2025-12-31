@@ -21,7 +21,7 @@ export const Visualizer: React.FC = () => {
     const x = d3.scaleBand()
       .domain(d3.range(n).map(String))
       .range([0, width])
-      .padding(0.2);
+      .padding(0.3);
 
     const y = d3.scaleLinear()
       .domain([0, 255])
@@ -37,12 +37,12 @@ export const Visualizer: React.FC = () => {
       .attr('y', d => height - y(d))
       .attr('width', x.bandwidth())
       .attr('height', d => y(d))
-      .attr('fill', 'url(#barGradient)')
-      .attr('rx', 2);
+      .attr('fill', 'url(#inkGradient)')
+      .attr('rx', 1);
 
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient')
-      .attr('id', 'barGradient')
+      .attr('id', 'inkGradient')
       .attr('x1', '0%')
       .attr('y1', '0%')
       .attr('x2', '0%')
@@ -50,11 +50,11 @@ export const Visualizer: React.FC = () => {
 
     gradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#3b82f6');
+      .attr('stop-color', '#8b735b'); // Sepia Ink
 
     gradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#1d4ed8');
+      .attr('stop-color', '#2a241e'); // Deep Charcoal
 
     let animationId: number;
 
@@ -74,8 +74,8 @@ export const Visualizer: React.FC = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full h-[80px] bg-black/40 rounded-t-2xl overflow-hidden border-b border-white/5">
-      <svg ref={svgRef} className="w-full h-full" />
+    <div ref={containerRef} className="w-full h-[80px] bg-[#1a1512] rounded-t-lg overflow-hidden border-b-2 border-[#3d3128]">
+      <svg ref={svgRef} className="w-full h-full opacity-60" />
     </div>
   );
 };
