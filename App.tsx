@@ -79,12 +79,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      const midi = COMPUTER_KEYBOARD_MAP[e.key.toLowerCase()];
-      if (midi) handleNoteOn(midi);
+      const key = e.key.toLowerCase();
+      const midi = COMPUTER_KEYBOARD_MAP[key];
+      if (midi) {
+        e.preventDefault();
+        handleNoteOn(midi);
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      const midi = COMPUTER_KEYBOARD_MAP[e.key.toLowerCase()];
+      const key = e.key.toLowerCase();
+      const midi = COMPUTER_KEYBOARD_MAP[key];
       if (midi) handleNoteOff(midi);
     };
 
@@ -103,7 +108,7 @@ const App: React.FC = () => {
         <h1 className="text-5xl font-black tracking-tighter text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">
           Jbabe keyboard
         </h1>
-        <div className="flex gap-4 mt-2">
+        <div className="flex gap-4 mt-2 flex-wrap justify-center px-4">
           {Object.keys(PRESETS).map(name => (
             <button
               key={name}
@@ -126,9 +131,9 @@ const App: React.FC = () => {
           {/* Audio Visualizer Display */}
           <Visualizer />
           
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             <div className="flex overflow-x-auto overflow-y-hidden pb-12 scroll-smooth no-scrollbar">
-              <div className="flex min-w-max h-[350px] items-start mx-auto">
+              <div className="flex min-w-max h-[300px] sm:h-[350px] items-start mx-auto">
                 {PIANO_KEYS_61.map((note) => (
                   <PianoKey
                     key={note.midi}
@@ -144,10 +149,10 @@ const App: React.FC = () => {
             <div className="mt-4 flex justify-center items-center gap-8 text-neutral-500 font-mono text-[10px] uppercase tracking-widest">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${activeNotes.size > 0 ? 'bg-blue-500 animate-ping' : 'bg-neutral-800'}`}></span>
-                {activeNotes.size > 0 ? 'Synthesizing...' : 'Waiting for Input'}
+                {activeNotes.size > 0 ? 'Playing' : 'Ready'}
               </div>
-              <span className="hidden sm:inline">Desktop: A-L Rows</span>
-              <span className="hidden sm:inline">Polyphony: {activeNotes.size} voices</span>
+              <span className="hidden sm:inline">Desktop Keys: A, W, S, E, D, F...</span>
+              <span className="hidden sm:inline">Active: {activeNotes.size}</span>
             </div>
           </div>
         </div>
@@ -155,7 +160,7 @@ const App: React.FC = () => {
 
       {/* Minimal Footer */}
       <footer className="p-4 text-center text-[9px] text-neutral-700 font-bold uppercase tracking-[0.3em]">
-        Handcrafted for Jbabe &bull; Powered by Web Audio API
+        Designed for Jbabe &bull; High Fidelity Web Audio
       </footer>
 
       <style>{`

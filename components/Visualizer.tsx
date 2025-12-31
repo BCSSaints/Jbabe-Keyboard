@@ -5,17 +5,19 @@ import { audioEngine } from '../services/audioEngine';
 
 export const Visualizer: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !containerRef.current) return;
 
-    const width = svgRef.current.clientWidth;
+    const width = containerRef.current.clientWidth || 800;
     const height = 80;
+    
     const svg = d3.select(svgRef.current)
       .attr('viewBox', `0 0 ${width} ${height}`)
       .attr('preserveAspectRatio', 'none');
 
-    const n = 64; // Number of bars
+    const n = 64; 
     const x = d3.scaleBand()
       .domain(d3.range(n).map(String))
       .range([0, width])
@@ -24,6 +26,8 @@ export const Visualizer: React.FC = () => {
     const y = d3.scaleLinear()
       .domain([0, 255])
       .range([0, height]);
+
+    svg.selectAll('*').remove();
 
     const bars = svg.selectAll('rect')
       .data(d3.range(n).map(() => 0))
@@ -36,7 +40,6 @@ export const Visualizer: React.FC = () => {
       .attr('fill', 'url(#barGradient)')
       .attr('rx', 2);
 
-    // Add a gradient for the bars
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient')
       .attr('id', 'barGradient')
@@ -47,18 +50,17 @@ export const Visualizer: React.FC = () => {
 
     gradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#60a5fa');
+      .attr('stop-color', '#3b82f6');
 
     gradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#2563eb');
+      .attr('stop-color', '#1d4ed8');
 
     let animationId: number;
 
     const update = () => {
       const data = audioEngine.getFrequencyData();
       if (data) {
-        // We only take the first n bins to keep it focused on audible frequencies
         const subset = Array.from(data.slice(0, n));
         bars.data(subset)
           .attr('y', d => height - y(d))
@@ -72,7 +74,7 @@ export const Visualizer: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full h-[80px] bg-black/20 rounded-t-2xl overflow-hidden border-b border-white/5">
+    <div ref={containerRef} className="w-full h-[80px] bg-black/40 rounded-t-2xl overflow-hidden border-b border-white/5">
       <svg ref={svgRef} className="w-full h-full" />
     </div>
   );

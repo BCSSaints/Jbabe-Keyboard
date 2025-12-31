@@ -2,9 +2,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SynthSettings } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safety: Only initialize if key exists, otherwise provide a fallback function
+const apiKey = process.env.API_KEY;
 
 export async function generatePresetFromMood(mood: string): Promise<SynthSettings> {
+  if (!apiKey) {
+    throw new Error("API key is not configured for AI presets.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Suggest synthesizer parameters for a mood described as: "${mood}". Use specific numerical values.`,
@@ -29,7 +35,7 @@ export async function generatePresetFromMood(mood: string): Promise<SynthSetting
   });
 
   try {
-    const settings = JSON.parse(response.text);
+    const settings = JSON.parse(response.text || '{}');
     return settings as SynthSettings;
   } catch (e) {
     console.error("Failed to parse AI preset", e);
