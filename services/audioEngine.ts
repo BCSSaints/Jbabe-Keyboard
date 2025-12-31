@@ -11,6 +11,11 @@ class AudioEngine {
   private activeOscillators: Map<number, { nodes: AudioNode[]; gain: GainNode }> = new Map();
   private noiseBuffer: AudioBuffer | null = null;
 
+  // Microphone state
+  private micStream: MediaStream | null = null;
+  private micAnalyzer: AnalyserNode | null = null;
+  private micDataArray: Float32Array | null = null;
+
   private settings: SynthSettings = {
     oscType: 'triangle',
     attack: 0.002,
@@ -66,6 +71,93 @@ class AudioEngine {
     }
   }
 
+  async startMic(): Promise<boolean> {
+    if (!this.ctx) this.init();
+    if (!this.ctx) return false;
+
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = this.ctx.createMediaStreamSource(this.micStream);
+      this.micAnalyzer = this.ctx.createAnalyser();
+      this.micAnalyzer.fftSize = 2048;
+      this.micDataArray = new Float32Array(this.micAnalyzer.fftSize);
+      source.connect(this.micAnalyzer);
+      return true;
+    } catch (err) {
+      console.error("Microphone access denied", err);
+      return false;
+    }
+  }
+
+  stopMic() {
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => track.stop());
+      this.micStream = null;
+    }
+    this.micAnalyzer = null;
+  }
+
+  getDetectedPitch(): { frequency: number; note: number; cents: number } | null {
+    if (!this.micAnalyzer || !this.micDataArray || !this.ctx) return null;
+    
+    this.micAnalyzer.getFloatTimeDomainData(this.micDataArray);
+    const pitch = this.autoCorrelate(this.micDataArray, this.ctx.sampleRate);
+    
+    if (pitch === -1) return null;
+
+    const midi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
+    const note = Math.round(midi);
+    const cents = Math.floor(100 * (midi - note));
+    
+    return { frequency: pitch, note, cents };
+  }
+
+  private autoCorrelate(buffer: Float32Array, sampleRate: number): number {
+    // Simple autocorrelation for pitch detection
+    let sum = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      sum += buffer[i] * buffer[i];
+    }
+    const rms = Math.sqrt(sum / buffer.length);
+    if (rms < 0.01) return -1; // Too quiet
+
+    let r1 = 0, r2 = buffer.length - 1, thres = 0.2;
+    for (let i = 0; i < buffer.length / 2; i++) {
+      if (Math.abs(buffer[i]) < thres) { r1 = i; break; }
+    }
+    for (let i = 1; i < buffer.length / 2; i++) {
+      if (Math.abs(buffer[buffer.length - i]) < thres) { r2 = buffer.length - i; break; }
+    }
+
+    const buf = buffer.slice(r1, r2);
+    const size = buf.length;
+    const c = new Array(size).fill(0);
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size - i; j++) {
+        c[i] = c[i] + buf[j] * buf[j + i];
+      }
+    }
+
+    let d = 0;
+    while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < size; i++) {
+      if (c[i] > maxval) {
+        maxval = c[i];
+        maxpos = i;
+      }
+    }
+    let T0 = maxpos;
+
+    // Interpolation for better precision
+    const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    const a = (x1 + x3 - 2 * x2) / 2;
+    const b = (x3 - x1) / 2;
+    if (a !== 0) T0 = T0 - b / (2 * a);
+
+    return sampleRate / T0;
+  }
+
   private createReverbBuffer(duration: number, decay: number): AudioBuffer {
     const sampleRate = this.ctx?.sampleRate || 44100;
     const length = sampleRate * duration;
@@ -112,24 +204,19 @@ class AudioEngine {
     const gainNode = this.ctx.createGain();
 
     if (this.settings.oscType === 'vocal') {
-      // --- VOCAL SYNTHESIS ENGINE ("AHHH") ---
-      // Source: Sawtooth is rich in harmonics
       const osc = this.ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq, now);
       
-      // Add subtle vibrato (5.5Hz)
       const lfo = this.ctx.createOscillator();
       lfo.frequency.setValueAtTime(5.5, now);
       const lfoGain = this.ctx.createGain();
-      lfoGain.gain.setValueAtTime(2.0, now); // Vibrato depth
+      lfoGain.gain.setValueAtTime(2.0, now);
       lfo.connect(lfoGain);
       lfoGain.connect(osc.frequency);
       lfo.start(now);
       nodes.push(lfo, lfoGain);
 
-      // Formant Filters for "AH" [a] (Female)
-      // F1: 800Hz, F2: 1150Hz, F3: 2900Hz
       const formants = [
         { f: 800, q: 10, g: 0.6 },
         { f: 1150, q: 12, g: 0.4 },
@@ -144,10 +231,8 @@ class AudioEngine {
         bp.type = 'bandpass';
         bp.frequency.setValueAtTime(formant.f, now);
         bp.Q.setValueAtTime(formant.q, now);
-        
         const g = this.ctx!.createGain();
         g.gain.setValueAtTime(formant.g, now);
-        
         osc.connect(bp);
         bp.connect(g);
         g.connect(formantGainSum);
@@ -158,25 +243,22 @@ class AudioEngine {
       nodes.push(osc, formantGainSum);
       osc.start(now);
     } else {
-      // --- STANDARD SYNTH ENGINE ---
       const hammer = this.ctx.createBufferSource();
       hammer.buffer = this.noiseBuffer;
       const hammerFilter = this.ctx.createBiquadFilter();
       hammerFilter.type = 'bandpass';
       hammerFilter.frequency.setValueAtTime(1200, now);
       hammerFilter.Q.setValueAtTime(1.0, now);
-      
       const hammerGain = this.ctx.createGain();
       hammerGain.gain.setValueAtTime(0.3, now);
       hammerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-      
       hammer.connect(hammerFilter);
       hammerFilter.connect(hammerGain);
       hammerGain.connect(gainNode);
       nodes.push(hammer, hammerFilter, hammerGain);
 
       const osc1 = this.ctx.createOscillator();
-      osc1.type = this.settings.oscType as OscillatorType;
+      osc1.type = this.settings.oscType as any;
       osc1.frequency.setValueAtTime(freq, now);
       osc1.detune.setValueAtTime(this.settings.detune - 2, now);
       osc1.connect(gainNode);
@@ -196,11 +278,9 @@ class AudioEngine {
       osc2.start(now);
     }
 
-    // Master Envelope
     gainNode.gain.setValueAtTime(0, now);
     gainNode.gain.linearRampToValueAtTime(0.6, now + this.settings.attack);
     gainNode.gain.exponentialRampToValueAtTime(Math.max(0.001, this.settings.sustain), now + this.settings.attack + this.settings.decay);
-
     gainNode.connect(this.filter);
     this.activeOscillators.set(midi, { nodes, gain: gainNode });
   }
@@ -210,23 +290,18 @@ class AudioEngine {
     if (active && this.ctx) {
       const { nodes, gain } = active;
       const now = this.ctx.currentTime;
-      
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + this.settings.release);
-      
       setTimeout(() => {
         nodes.forEach(n => {
           try {
-            if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-              n.stop();
-            }
+            if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop();
             n.disconnect();
           } catch(e) {}
         });
         gain.disconnect();
       }, this.settings.release * 1000 + 100);
-      
       this.activeOscillators.delete(midi);
     }
   }

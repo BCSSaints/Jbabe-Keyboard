@@ -1,5 +1,7 @@
 {
   "name": "Jbabe keyboard",
   "description": "A simple and elegant 61-key virtual keyboard.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
