@@ -66,6 +66,8 @@ const App: React.FC = () => {
   const [currentTone, setCurrentTone] = useState('Carrying the Banner');
   const [isMicActive, setIsMicActive] = useState(false);
   const [detectedPitch, setDetectedPitch] = useState<{ frequency: number; note: number; cents: number } | null>(null);
+  const [trackingMode, setTrackingMode] = useState<'follow' | 'match'>('follow');
+  const [targetMidi, setTargetMidi] = useState<number | null>(60); // Default to Middle C
   
   const micIntervalRef = useRef<number | null>(null);
   const keyboardScrollRef = useRef<HTMLDivElement>(null);
@@ -82,6 +84,7 @@ const App: React.FC = () => {
       next.add(midi);
       return next;
     });
+    setTargetMidi(midi); // Set target when a key is played
     audioEngine.playNote(midi);
   }, []);
 
@@ -112,9 +115,9 @@ const App: React.FC = () => {
     }
   };
 
-  // Auto-scroll logic: Center the keyboard on the detected pitch
+  // Auto-scroll logic: Only scroll if in 'follow' mode
   useEffect(() => {
-    if (isMicActive && detectedPitch && keyboardScrollRef.current) {
+    if (isMicActive && detectedPitch && trackingMode === 'follow' && keyboardScrollRef.current) {
       const keyElement = keyRefs.current.get(detectedPitch.note);
       if (keyElement) {
         const container = keyboardScrollRef.current;
@@ -122,7 +125,7 @@ const App: React.FC = () => {
         container.scrollTo({ left: scrollPos, behavior: 'smooth' });
       }
     }
-  }, [detectedPitch?.note, isMicActive]);
+  }, [detectedPitch?.note, isMicActive, trackingMode]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -151,23 +154,33 @@ const App: React.FC = () => {
   }, [handleNoteOn, handleNoteOff]);
 
   const getPitchStatus = () => {
-    if (!detectedPitch) return { text: "SILENCE IN THE THEATER", color: "text-[#8b735b]", offset: 50 };
-    const { cents } = detectedPitch;
-    if (Math.abs(cents) < 15) return { text: "ON KEY! CARRY THE BANNER!", color: "text-[#fdf6e3]", offset: 50 };
-    if (cents < 0) return { text: "FLAT AS A PANCAKE", color: "text-[#d9b891]", offset: 50 + cents / 2 };
-    return { text: "SHARP AS A TACK", color: "text-[#d9b891]", offset: 50 + cents / 2 };
+    if (!detectedPitch) return { text: "AWAITING VOCALS", color: "text-[#8b735b]", offset: 50 };
+    
+    let cents = detectedPitch.cents;
+    
+    // In match mode, calculate cents difference from the TARGET note
+    if (trackingMode === 'match' && targetMidi !== null) {
+      const targetFreq = 440 * Math.pow(2, (targetMidi - 69) / 12);
+      const diffMidi = 12 * (Math.log(detectedPitch.frequency / targetFreq) / Math.log(2));
+      cents = Math.floor(100 * diffMidi);
+    }
+
+    if (Math.abs(cents) < 15) return { text: "ON KEY! PERFECT HARMONY!", color: "text-[#fdf6e3]", offset: 50 };
+    if (cents < 0) return { text: cents < -50 ? "WAY TOO LOW" : "A BIT FLAT", color: "text-[#d9b891]", offset: Math.max(0, 50 + cents / 2) };
+    return { text: cents > 50 ? "WAY TOO HIGH" : "A BIT SHARP", color: "text-[#d9b891]", offset: Math.min(100, 50 + cents / 2) };
   };
 
   const status = getPitchStatus();
   const detectedNoteName = detectedPitch ? `${NOTE_NAMES[detectedPitch.note % 12]}${Math.floor(detectedPitch.note / 12) - 1}` : "---";
+  const targetNoteName = targetMidi !== null ? `${NOTE_NAMES[targetMidi % 12]}${Math.floor(targetMidi / 12) - 1}` : "---";
 
   return (
     <div className="h-screen bg-[#1c1917] text-[#d4c5b3] flex flex-col font-serif select-none overflow-hidden relative">
-      {/* Newspaper Header - More compact for smaller screens */}
+      {/* Newspaper Header */}
       <header className="pt-4 sm:pt-6 pb-2 flex flex-col items-center border-b-4 border-double border-[#4a3f35] mx-4 sm:mx-8 shrink-0">
         <div className="w-full flex justify-between items-end mb-1 px-4 uppercase text-[8px] sm:text-[10px] tracking-[0.4em] font-bold text-[#8b735b]">
           <span>Vol. LXIX — No. 1899</span>
-          <span className="hidden sm:inline">New York City</span>
+          <span className="hidden sm:inline">New York City Edition</span>
           <span>Two Cents</span>
         </div>
         <h1 className="newspaper-title text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-1 italic">
@@ -194,57 +207,81 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col gap-4 p-4 overflow-hidden items-stretch">
         {/* Top Section: Audition and Visualizer row */}
-        <div className="flex flex-col lg:flex-row gap-4 shrink-0 lg:h-[220px]">
-          {/* Vocal Audition Panel - More compact */}
-          <div className="w-full lg:w-1/3 bg-[#2a241e] border-2 border-[#4a3f35] p-4 rounded shadow-lg flex flex-row lg:flex-col items-center lg:justify-center gap-4 relative overflow-hidden">
-            <div className="hidden lg:block absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
-              <svg width="60" height="60" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="white" strokeWidth="2" fill="none"/></svg>
-            </div>
-            
-            <div className="flex-1 lg:flex-none text-center lg:mb-2">
-              <h2 className="newspaper-title text-lg sm:text-xl text-white underline decoration-double">AUDITION</h2>
-              <p className="typewriter text-[8px] text-[#8b735b] uppercase tracking-widest hidden sm:block">Match the key</p>
+        <div className="flex flex-col lg:flex-row gap-4 shrink-0 lg:h-[240px]">
+          {/* Vocal Audition Panel */}
+          <div className="w-full lg:w-2/5 bg-[#2a241e] border-2 border-[#4a3f35] p-4 rounded shadow-lg flex flex-col gap-3 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-1">
+               <h2 className="newspaper-title text-lg text-white underline decoration-double">VOCAL AUDITION</h2>
+               <div className="flex bg-[#1c1917] rounded-sm p-1 border border-[#4a3f35]">
+                  <button 
+                    onClick={() => setTrackingMode('follow')}
+                    className={`px-2 py-0.5 text-[8px] uppercase font-bold transition-colors ${trackingMode === 'follow' ? 'bg-[#d4c5b3] text-[#1c1917]' : 'text-[#8b735b]'}`}
+                  >
+                    Follow
+                  </button>
+                  <button 
+                    onClick={() => setTrackingMode('match')}
+                    className={`px-2 py-0.5 text-[8px] uppercase font-bold transition-colors ${trackingMode === 'match' ? 'bg-[#d4c5b3] text-[#1c1917]' : 'text-[#8b735b]'}`}
+                  >
+                    Match Key
+                  </button>
+               </div>
             </div>
 
-            <div className="flex-[2] lg:flex-none bg-[#1c1917] p-3 rounded-sm border border-[#4a3f35] flex items-center justify-between lg:flex-col lg:gap-2 shadow-inner w-full max-w-[300px] lg:max-w-none">
-              <div className="text-center">
-                <span className="text-[8px] uppercase text-[#8b735b] block">Note</span>
-                <span className="text-3xl lg:text-4xl font-black newspaper-title text-white tracking-tighter">
+            <div className="flex gap-4">
+              <div className="flex-1 bg-[#1c1917] p-2 rounded-sm border border-[#4a3f35] flex flex-col items-center justify-center shadow-inner">
+                <span className="text-[7px] uppercase text-[#8b735b] mb-1">Your Voice</span>
+                <span className={`text-2xl sm:text-3xl font-black newspaper-title tracking-tighter transition-colors ${detectedPitch ? 'text-white' : 'text-[#3d3128]'}`}>
                   {detectedNoteName}
                 </span>
               </div>
 
-              <div className="hidden sm:block flex-1 mx-4 lg:mx-0 lg:w-full">
-                <div className="h-3 bg-[#2a241e] border border-[#4a3f35] relative rounded-full overflow-hidden">
-                  <div 
-                    className="absolute top-0 bottom-0 w-1 bg-[#d4c5b3] transition-all duration-100 shadow-[0_0_8px_#d4c5b3]" 
-                    style={{ left: `${status.offset}%` }}
-                  />
+              {trackingMode === 'match' && (
+                <div className="flex-1 bg-[#1c1917] p-2 rounded-sm border border-[#d4c5b3]/20 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-0.5 bg-[#d4c5b3]/10"></div>
+                  <span className="text-[7px] uppercase text-[#d4c5b3]/60 mb-1">Target Note</span>
+                  <span className="text-2xl sm:text-3xl font-black newspaper-title tracking-tighter text-[#d4c5b3]">
+                    {targetNoteName}
+                  </span>
                 </div>
-                <p className={`typewriter text-[7px] uppercase font-bold tracking-widest mt-1 text-center truncate ${status.color}`}>
-                  {status.text}
-                </p>
+              )}
+            </div>
+
+            <div className="w-full bg-[#1c1917] p-2 border border-[#4a3f35] rounded-sm">
+              <div className="flex justify-between text-[7px] uppercase text-[#8b735b] mb-1 px-1">
+                <span>{trackingMode === 'match' ? 'Flat of Target' : 'Flat'}</span>
+                <span>Perfect</span>
+                <span>{trackingMode === 'match' ? 'Sharp of Target' : 'Sharp'}</span>
               </div>
+              <div className="h-2.5 bg-[#2a241e] border border-[#4a3f35] relative rounded-full overflow-hidden">
+                <div 
+                  className="absolute top-0 bottom-0 w-1 bg-[#d4c5b3] transition-all duration-100 shadow-[0_0_8px_#d4c5b3]" 
+                  style={{ left: `${status.offset}%` }}
+                />
+              </div>
+              <p className={`typewriter text-[8px] uppercase font-bold tracking-widest mt-1 text-center truncate ${status.color}`}>
+                {status.text}
+              </p>
             </div>
 
             <button
               onClick={toggleMic}
-              className={`flex-1 lg:flex-none py-3 lg:w-full rounded-sm border-2 transition-all duration-300 uppercase font-black text-[10px] tracking-[0.15em] shadow-lg ${
+              className={`py-2 rounded-sm border-2 transition-all duration-300 uppercase font-black text-[10px] tracking-[0.2em] shadow-lg ${
                 isMicActive 
                   ? 'bg-[#8b0000] border-[#4a0000] text-white animate-pulse' 
-                  : 'bg-[#d4c5b3] border-[#a08b73] text-[#1c1917] hover:scale-[1.02]'
+                  : 'bg-[#d4c5b3] border-[#a08b73] text-[#1c1917] hover:scale-[1.01]'
               }`}
             >
-              {isMicActive ? "STOP" : "SING!"}
+              {isMicActive ? "CLOSE AUDITION" : "OPEN AUDITION"}
             </button>
           </div>
 
           {/* Visualizer area */}
           <div className="flex-1 bg-[#2a241e] rounded border-2 border-[#4a3f35] overflow-hidden flex flex-col">
              <div className="bg-[#1a1512] px-3 py-1 border-b border-[#3d3128] flex justify-between items-center">
-                <span className="typewriter text-[8px] uppercase text-[#8b735b]">Vocal Signature Graph</span>
+                <span className="typewriter text-[8px] uppercase text-[#8b735b]">Vocal Resonance Frequency</span>
                 <div className="flex gap-1">
-                   <div className="w-1 h-1 bg-[#8b735b] rounded-full"></div>
+                   <div className="w-1 h-1 bg-[#d4c5b3] rounded-full animate-pulse"></div>
                    <div className="w-1 h-1 bg-[#8b735b] rounded-full opacity-50"></div>
                 </div>
              </div>
@@ -254,7 +291,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Section: The Keyboard - Always visible and central */}
+        {/* Bottom Section: The Keyboard */}
         <div className="flex-1 bg-[#2a241e] rounded-lg border-4 border-[#4a3f35] shadow-2xl overflow-hidden flex flex-col min-h-0">
           <div className="flex-1 p-2 sm:p-4 bg-[#221c18] flex flex-col justify-center min-h-0 relative">
             <div 
@@ -271,6 +308,7 @@ const App: React.FC = () => {
                       note={note}
                       isActive={activeNotes.has(note.midi)}
                       isVocalActive={detectedPitch?.note === note.midi}
+                      isTarget={trackingMode === 'match' && targetMidi === note.midi}
                       onMouseDown={handleNoteOn}
                       onMouseUp={handleNoteOff}
                     />
@@ -283,7 +321,7 @@ const App: React.FC = () => {
             <div className="absolute bottom-2 left-4 right-4 flex justify-between items-center text-[#8b735b] font-serif text-[10px] uppercase tracking-[0.1em] italic">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 border border-[#8b735b] rotate-45 ${activeNotes.size > 0 || isMicActive ? 'bg-[#d4c5b3]' : 'bg-transparent'}`}></span>
-                {isMicActive ? 'Voice Tracking...' : 'Idle'}
+                {trackingMode === 'match' ? 'Key Match Mode Active' : isMicActive ? 'Vocal Follow Mode' : 'Ready'}
               </div>
               <div className="flex gap-4">
                 <span className="hidden sm:inline">Active Notes: {activeNotes.size}</span>

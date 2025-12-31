@@ -6,6 +6,7 @@ interface PianoKeyProps {
   note: Note;
   isActive: boolean;
   isVocalActive?: boolean;
+  isTarget?: boolean;
   onMouseDown: (midi: number) => void;
   onMouseUp: (midi: number) => void;
 }
@@ -14,21 +15,24 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
   note, 
   isActive, 
   isVocalActive = false, 
+  isTarget = false,
   onMouseDown, 
   onMouseUp 
 }) => {
   const baseClasses = "transition-all duration-75 select-none relative flex flex-col items-center justify-end pb-4";
   
-  // Combine states for styling
-  // isActive: manually pressed (Keyboard/Mouse)
-  // isVocalActive: matched by microphone pitch
+  // isActive: manually pressed
+  // isVocalActive: matched by microphone pitch (follow mode)
+  // isTarget: the chosen note to match (match mode)
   
   if (note.isBlack) {
     const blackKeyBg = isActive 
       ? 'bg-[#d4c5b3] translate-y-0.5 shadow-[0_0_15px_rgba(212,197,179,0.8)]' 
-      : isVocalActive 
-        ? 'bg-[#8b735b] translate-y-0.2 shadow-[0_0_20px_rgba(139,115,91,0.6)]' 
-        : 'bg-[#121212] hover:bg-[#1a1a1a] shadow-[2px_4px_8px_rgba(0,0,0,0.8)]';
+      : isTarget
+        ? 'bg-[#8b735b] border-[#d4c5b3] shadow-[0_0_20px_rgba(212,197,179,0.4)]'
+        : isVocalActive 
+          ? 'bg-[#4a3f35] translate-y-0.2 shadow-[0_0_10px_rgba(139,115,91,0.4)]' 
+          : 'bg-[#121212] hover:bg-[#1a1a1a] shadow-[2px_4px_8px_rgba(0,0,0,0.8)]';
 
     return (
       <div
@@ -39,7 +43,7 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
           ${blackKeyBg} 
           before:absolute before:top-0 before:left-1 before:right-1 before:h-2 before:bg-white/5`}
       >
-        <span className={`typewriter text-[5px] sm:text-[6px] font-bold mb-1 opacity-60 ${isActive || isVocalActive ? 'text-[#1c1917]' : 'text-[#8b735b]'}`}>
+        <span className={`typewriter text-[5px] sm:text-[6px] font-bold mb-1 opacity-60 ${isActive || isTarget ? 'text-[#1c1917]' : 'text-[#8b735b]'}`}>
           {note.name}
         </span>
       </div>
@@ -48,11 +52,13 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
 
   const whiteKeyBg = isActive 
     ? 'bg-[#d4c5b3] translate-y-1.5 shadow-[inset_0_4px_10px_rgba(0,0,0,0.2),0_0_20px_rgba(212,197,179,0.4)]' 
-    : isVocalActive
-      ? 'bg-[#e5ddd0] translate-y-0.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.1),0_0_25px_rgba(139,115,91,0.3)]'
-      : 'hover:bg-[#fff9eb] shadow-[0_4px_4px_rgba(0,0,0,0.2)]';
+    : isTarget
+      ? 'bg-[#fdf6e3] ring-2 ring-inset ring-[#d4c5b3] shadow-[0_0_25px_rgba(212,197,179,0.5)]'
+      : isVocalActive
+        ? 'bg-[#e5ddd0] translate-y-0.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.1),0_0_15px_rgba(139,115,91,0.2)]'
+        : 'hover:bg-[#fff9eb] shadow-[0_4px_4px_rgba(0,0,0,0.2)]';
 
-  const whiteKeyTextColor = isActive || isVocalActive ? 'text-[#1c1917]' : 'text-[#8b735b]';
+  const whiteKeyTextColor = isActive || isTarget ? 'text-[#1c1917]' : 'text-[#8b735b]';
 
   return (
     <div
@@ -66,6 +72,11 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
       <span className={`typewriter text-[7px] sm:text-[9px] font-bold tracking-tighter ${whiteKeyTextColor}`}>
         {note.name}
       </span>
+      {isTarget && (
+        <div className="absolute top-2 w-full flex justify-center opacity-20 pointer-events-none">
+           <div className="w-4 h-4 rounded-full border border-[#8b735b]"></div>
+        </div>
+      )}
       {isVocalActive && !isActive && (
         <div className="absolute bottom-2 w-1.5 h-1.5 bg-[#8b735b] rotate-45 animate-pulse"></div>
       )}
