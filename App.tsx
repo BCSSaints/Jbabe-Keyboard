@@ -27,6 +27,16 @@ const PRESETS: Record<string, Partial<SynthSettings>> = {
     resonance: 6, 
     reverb: 0.4 
   },
+  "Medda's 'Ah'": {
+    oscType: 'vocal',
+    attack: 0.1,
+    decay: 0.5,
+    sustain: 0.8,
+    release: 0.4,
+    cutoff: 8000,
+    resonance: 1,
+    reverb: 0.6
+  },
   'Santa Fe': { 
     oscType: 'sine', 
     attack: 1.2, 
@@ -114,7 +124,7 @@ const App: React.FC = () => {
           The Jbabe Gazette
         </h1>
         <div className="w-full border-t border-[#4a3f35] pt-2 flex flex-col items-center gap-4">
-          <p className="typewriter text-xs uppercase tracking-widest text-[#8b735b]">EXTRA! EXTRA! Choose your melody!</p>
+          <p className="typewriter text-xs uppercase tracking-widest text-[#8b735b]">EXTRA! EXTRA! Use Medda's 'Ah' to find your key!</p>
           <div className="flex gap-2 sm:gap-4 flex-wrap justify-center px-4">
             {Object.keys(PRESETS).map(name => (
               <button
@@ -124,7 +134,7 @@ const App: React.FC = () => {
                   currentTone === name
                     ? 'bg-[#d4c5b3] text-[#1c1917] scale-105 shadow-[4px_4px_0px_#4a3f35]'
                     : 'bg-transparent text-[#d4c5b3] hover:bg-[#2a241e] opacity-70 hover:opacity-100'
-                }`}
+                } ${name === "Medda's 'Ah'" ? 'ring-1 ring-[#8b735b] ring-offset-2 ring-offset-[#1c1917]' : ''}`}
               >
                 {name}
               </button>
@@ -157,9 +167,9 @@ const App: React.FC = () => {
             <div className="mt-6 flex justify-between items-center px-4 text-[#8b735b] font-serif text-[11px] uppercase tracking-[0.2em] italic border-t border-[#3d3128] pt-4">
               <div className="flex items-center gap-3">
                 <span className={`w-3 h-3 border border-[#8b735b] rotate-45 ${activeNotes.size > 0 ? 'bg-[#d4c5b3]' : 'bg-transparent'}`}></span>
-                {activeNotes.size > 0 ? 'Resonance in Motion' : 'Waiting for the News'}
+                {activeNotes.size > 0 ? 'Singing in Harmony' : 'Awaiting the Anthem'}
               </div>
-              <span className="hidden sm:inline">Desktop Typing: A to L Rows</span>
+              <span className="hidden sm:inline">Desktop Keys: A to L Rows</span>
               <span className="hidden sm:inline">Active Voices: {activeNotes.size}</span>
             </div>
           </div>

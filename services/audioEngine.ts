@@ -110,49 +110,98 @@ class AudioEngine {
     const nodes: AudioNode[] = [];
 
     const gainNode = this.ctx.createGain();
-    
-    const hammer = this.ctx.createBufferSource();
-    hammer.buffer = this.noiseBuffer;
-    const hammerFilter = this.ctx.createBiquadFilter();
-    hammerFilter.type = 'bandpass';
-    hammerFilter.frequency.setValueAtTime(1200, now);
-    hammerFilter.Q.setValueAtTime(1.0, now);
-    
-    const hammerGain = this.ctx.createGain();
-    hammerGain.gain.setValueAtTime(0.3, now);
-    hammerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    
-    hammer.connect(hammerFilter);
-    hammerFilter.connect(hammerGain);
-    hammerGain.connect(gainNode);
-    nodes.push(hammer, hammerFilter, hammerGain);
 
-    const osc1 = this.ctx.createOscillator();
-    osc1.type = this.settings.oscType;
-    osc1.frequency.setValueAtTime(freq, now);
-    osc1.detune.setValueAtTime(this.settings.detune - 2, now);
-    osc1.connect(gainNode);
-    nodes.push(osc1);
+    if (this.settings.oscType === 'vocal') {
+      // --- VOCAL SYNTHESIS ENGINE ("AHHH") ---
+      // Source: Sawtooth is rich in harmonics
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      
+      // Add subtle vibrato (5.5Hz)
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.setValueAtTime(5.5, now);
+      const lfoGain = this.ctx.createGain();
+      lfoGain.gain.setValueAtTime(2.0, now); // Vibrato depth
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(now);
+      nodes.push(lfo, lfoGain);
 
-    const osc2 = this.ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, now);
-    const osc2Gain = this.ctx.createGain();
-    osc2Gain.gain.setValueAtTime(0.15, now);
-    osc2.connect(osc2Gain);
-    osc2Gain.connect(gainNode);
-    nodes.push(osc2, osc2Gain);
+      // Formant Filters for "AH" [a] (Female)
+      // F1: 800Hz, F2: 1150Hz, F3: 2900Hz
+      const formants = [
+        { f: 800, q: 10, g: 0.6 },
+        { f: 1150, q: 12, g: 0.4 },
+        { f: 2900, q: 8, g: 0.2 }
+      ];
 
+      const formantGainSum = this.ctx.createGain();
+      formantGainSum.gain.setValueAtTime(1.0, now);
+
+      formants.forEach(formant => {
+        const bp = this.ctx!.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(formant.f, now);
+        bp.Q.setValueAtTime(formant.q, now);
+        
+        const g = this.ctx!.createGain();
+        g.gain.setValueAtTime(formant.g, now);
+        
+        osc.connect(bp);
+        bp.connect(g);
+        g.connect(formantGainSum);
+        nodes.push(bp, g);
+      });
+
+      formantGainSum.connect(gainNode);
+      nodes.push(osc, formantGainSum);
+      osc.start(now);
+    } else {
+      // --- STANDARD SYNTH ENGINE ---
+      const hammer = this.ctx.createBufferSource();
+      hammer.buffer = this.noiseBuffer;
+      const hammerFilter = this.ctx.createBiquadFilter();
+      hammerFilter.type = 'bandpass';
+      hammerFilter.frequency.setValueAtTime(1200, now);
+      hammerFilter.Q.setValueAtTime(1.0, now);
+      
+      const hammerGain = this.ctx.createGain();
+      hammerGain.gain.setValueAtTime(0.3, now);
+      hammerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      
+      hammer.connect(hammerFilter);
+      hammerFilter.connect(hammerGain);
+      hammerGain.connect(gainNode);
+      nodes.push(hammer, hammerFilter, hammerGain);
+
+      const osc1 = this.ctx.createOscillator();
+      osc1.type = this.settings.oscType as OscillatorType;
+      osc1.frequency.setValueAtTime(freq, now);
+      osc1.detune.setValueAtTime(this.settings.detune - 2, now);
+      osc1.connect(gainNode);
+      nodes.push(osc1);
+
+      const osc2 = this.ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freq * 2, now);
+      const osc2Gain = this.ctx.createGain();
+      osc2Gain.gain.setValueAtTime(0.15, now);
+      osc2.connect(osc2Gain);
+      osc2Gain.connect(gainNode);
+      nodes.push(osc2, osc2Gain);
+
+      hammer.start(now);
+      osc1.start(now);
+      osc2.start(now);
+    }
+
+    // Master Envelope
     gainNode.gain.setValueAtTime(0, now);
     gainNode.gain.linearRampToValueAtTime(0.6, now + this.settings.attack);
     gainNode.gain.exponentialRampToValueAtTime(Math.max(0.001, this.settings.sustain), now + this.settings.attack + this.settings.decay);
 
     gainNode.connect(this.filter);
-    
-    hammer.start(now);
-    osc1.start(now);
-    osc2.start(now);
-
     this.activeOscillators.set(midi, { nodes, gain: gainNode });
   }
 

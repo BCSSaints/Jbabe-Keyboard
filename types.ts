@@ -1,5 +1,5 @@
 
-export type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle';
+export type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'vocal';
 
 export interface SynthSettings {
   oscType: OscillatorType;
