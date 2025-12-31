@@ -1,6 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { audioEngine } from '../services/audioEngine';
 
 export const Visualizer: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -9,39 +10,60 @@ export const Visualizer: React.FC = () => {
     if (!svgRef.current) return;
 
     const width = svgRef.current.clientWidth;
-    const height = 120;
+    const height = 80;
     const svg = d3.select(svgRef.current)
-      .attr('viewBox', `0 0 ${width} ${height}`);
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'none');
 
-    const n = 64;
-    const data = Array.from({ length: n }, () => 0);
-
+    const n = 64; // Number of bars
     const x = d3.scaleBand()
       .domain(d3.range(n).map(String))
       .range([0, width])
-      .padding(0.1);
+      .padding(0.2);
 
     const y = d3.scaleLinear()
       .domain([0, 255])
-      .range([height, 0]);
+      .range([0, height]);
 
     const bars = svg.selectAll('rect')
-      .data(data)
+      .data(d3.range(n).map(() => 0))
       .enter()
       .append('rect')
       .attr('x', (d, i) => x(String(i)) || 0)
-      .attr('y', height)
+      .attr('y', d => height - y(d))
       .attr('width', x.bandwidth())
-      .attr('height', 0)
-      .attr('fill', '#3b82f6')
+      .attr('height', d => y(d))
+      .attr('fill', 'url(#barGradient)')
       .attr('rx', 2);
+
+    // Add a gradient for the bars
+    const defs = svg.append('defs');
+    const gradient = defs.append('linearGradient')
+      .attr('id', 'barGradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#60a5fa');
+
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#2563eb');
 
     let animationId: number;
 
     const update = () => {
-      // Note: Getting real frequency data requires active audio context and analyzer
-      // In a real app, we'd pass the analyzer node. Here we simulate for aesthetics if needed
-      // or just keep it simple.
+      const data = audioEngine.getFrequencyData();
+      if (data) {
+        // We only take the first n bins to keep it focused on audible frequencies
+        const subset = Array.from(data.slice(0, n));
+        bars.data(subset)
+          .attr('y', d => height - y(d))
+          .attr('height', d => y(d));
+      }
       animationId = requestAnimationFrame(update);
     };
 
@@ -50,7 +72,7 @@ export const Visualizer: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full h-[120px] bg-black/40 rounded-xl overflow-hidden border border-white/5">
+    <div className="w-full h-[80px] bg-black/20 rounded-t-2xl overflow-hidden border-b border-white/5">
       <svg ref={svgRef} className="w-full h-full" />
     </div>
   );

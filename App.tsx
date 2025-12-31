@@ -4,6 +4,7 @@ import { PIANO_KEYS_61, COMPUTER_KEYBOARD_MAP } from './constants';
 import { PianoKey } from './components/PianoKey';
 import { audioEngine } from './services/audioEngine';
 import { SynthSettings } from './types';
+import { Visualizer } from './components/Visualizer';
 
 const PRESETS: Record<string, Partial<SynthSettings>> = {
   'Piano': { 
@@ -96,18 +97,18 @@ const App: React.FC = () => {
   }, [handleNoteOn, handleNoteOff]);
 
   return (
-    <div className="h-screen bg-[#050505] text-white flex flex-col font-sans select-none">
+    <div className="h-screen bg-[#050505] text-white flex flex-col font-sans select-none overflow-hidden">
       {/* Centered Header */}
-      <header className="py-12 flex flex-col items-center gap-4">
+      <header className="py-8 flex flex-col items-center gap-4">
         <h1 className="text-5xl font-black tracking-tighter text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">
           Jbabe keyboard
         </h1>
-        <div className="flex gap-4 mt-4">
+        <div className="flex gap-4 mt-2">
           {Object.keys(PRESETS).map(name => (
             <button
               key={name}
               onClick={() => setTone(name)}
-              className={`px-8 py-3 rounded-full text-sm font-bold transition-all duration-200 border-2 ${
+              className={`px-8 py-2 rounded-full text-sm font-bold transition-all duration-200 border-2 ${
                 currentTone === name
                   ? 'bg-blue-600 border-blue-400 scale-105 shadow-lg'
                   : 'bg-neutral-900 border-neutral-800 hover:border-neutral-600 opacity-60 hover:opacity-100'
@@ -120,36 +121,41 @@ const App: React.FC = () => {
       </header>
 
       {/* Keyboard Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
-        <div className="w-full max-w-[1400px] bg-neutral-900/40 rounded-3xl border border-white/5 p-8 shadow-2xl">
-          <div className="flex overflow-x-auto overflow-y-hidden pb-12 scroll-smooth no-scrollbar">
-            <div className="flex min-w-max h-[400px] items-start mx-auto">
-              {PIANO_KEYS_61.map((note) => (
-                <PianoKey
-                  key={note.midi}
-                  note={note}
-                  isActive={activeNotes.has(note.midi)}
-                  onMouseDown={handleNoteOn}
-                  onMouseUp={handleNoteOff}
-                />
-              ))}
-            </div>
-          </div>
+      <main className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8">
+        <div className="w-full max-w-[1400px] bg-neutral-900/40 rounded-3xl border border-white/5 shadow-2xl overflow-hidden flex flex-col">
+          {/* Audio Visualizer Display */}
+          <Visualizer />
           
-          <div className="mt-8 flex justify-center items-center gap-8 text-neutral-500 font-mono text-xs uppercase tracking-widest">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              High Definition Audio
+          <div className="p-8">
+            <div className="flex overflow-x-auto overflow-y-hidden pb-12 scroll-smooth no-scrollbar">
+              <div className="flex min-w-max h-[350px] items-start mx-auto">
+                {PIANO_KEYS_61.map((note) => (
+                  <PianoKey
+                    key={note.midi}
+                    note={note}
+                    isActive={activeNotes.has(note.midi)}
+                    onMouseDown={handleNoteOn}
+                    onMouseUp={handleNoteOff}
+                  />
+                ))}
+              </div>
             </div>
-            <span>Keys A-L Map</span>
-            <span>61 Polyphonic Layers</span>
+            
+            <div className="mt-4 flex justify-center items-center gap-8 text-neutral-500 font-mono text-[10px] uppercase tracking-widest">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${activeNotes.size > 0 ? 'bg-blue-500 animate-ping' : 'bg-neutral-800'}`}></span>
+                {activeNotes.size > 0 ? 'Synthesizing...' : 'Waiting for Input'}
+              </div>
+              <span className="hidden sm:inline">Desktop: A-L Rows</span>
+              <span className="hidden sm:inline">Polyphony: {activeNotes.size} voices</span>
+            </div>
           </div>
         </div>
       </main>
 
       {/* Minimal Footer */}
-      <footer className="p-6 text-center text-[10px] text-neutral-700 font-bold uppercase tracking-[0.2em]">
-        Designed for Jbabe &bull; Multi-Sample Additive Engine
+      <footer className="p-4 text-center text-[9px] text-neutral-700 font-bold uppercase tracking-[0.3em]">
+        Handcrafted for Jbabe &bull; Powered by Web Audio API
       </footer>
 
       <style>{`
